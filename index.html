@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>黑白块 30秒挑战</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+  .game { width: 100%; max-width: 420px; background: #16213e; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  .header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #0f3460; color: #fff; }
+  .header span { font-size: 20px; font-weight: bold; }
+  #timer { color: #e94560; }
+  #score { color: #00d2ff; }
+  .board { position: relative; width: 100%; height: 500px; background: #fff; overflow: hidden; }
+  .block { position: absolute; width: 25%; height: 80px; background-size: cover; background-position: center; cursor: pointer; transition: background-color 0.1s; }
+  .block:active { transform: scale(0.95); }
+  .overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; z-index: 10; }
+  .overlay.hidden { display: none; }
+  .overlay h1 { font-size: 36px; margin-bottom: 10px; }
+  .overlay p { font-size: 22px; margin-bottom: 20px; }
+  .overlay button { padding: 14px 40px; font-size: 20px; border: none; border-radius: 50px; background: #e94560; color: #fff; cursor: pointer; }
+  .overlay button:hover { background: #c73652; }
+</style>
+</head>
+<body>
+<div class="game">
+  <div class="header">
+    <span>黑白块</span>
+    <span>⏱ <span id="timer">30</span>s</span>
+    <span>⭐ <span id="score">0</span></span>
+  </div>
+  <div class="board" id="board"></div>
+  <div class="overlay" id="overlay">
+    <h1>黑白块挑战</h1>
+    <p>点黑块+1分，点白块-1分</p>
+    <button onclick="startGame()">开始游戏</button>
+  </div>
+</div>
+
+<script>
+const BLACK_IMG = 'https://imagetourl.cloud/swikzvpnpjid.jpg';
+const WHITE_IMG = 'https://imagetourl.cloud/q28rygrpgp2f.jpg';
+const CLICK_SOUND = 'https://hanwan6767.github.io/Music/sound/click.mp3';
+const FAIL_SOUND = 'https://hanwan6767.github.io/Music/sound/fail.mp3';
+
+const board = document.getElementById('board');
+const timerEl = document.getElementById('timer');
+const scoreEl = document.getElementById('score');
+const overlay = document.getElementById('overlay');
+
+let score = 0;
+let timeLeft = 30;
+let gameRunning = false;
+let gameInterval = null;
+let spawnInterval = null;
+let blocks = [];
+
+const clickAudio = new Audio(CLICK_SOUND);
+const failAudio = new Audio(FAIL_SOUND);
+
+function createBlock(isBlack) {
+  const block = document.createElement('div');
+  block.className = 'block';
+  block.style.left = Math.floor(Math.random() * 4) * 25 + '%';
+  block.style.top = '-80px';
+  block.style.backgroundImage = `url(${isBlack ? BLACK_IMG : WHITE_IMG})`;
+  block.dataset.black = isBlack;
+  block.addEventListener('click', () => handleClick(block));
+  board.appendChild(block);
+  blocks.push(block);
+  return block;
+}
+
+function moveBlocks() {
+  blocks.forEach(block => {
+    const top = parseFloat(block.style.top) + 5;
+    block.style.top = top + 'px';
+    if (top > 500) {
+      block.remove();
+      blocks = blocks.filter(b => b !== block);
+    }
+  });
+}
+
+function handleClick(block) {
+  if (!gameRunning) return;
+  
+  if (block.dataset.black === 'true') {
+    score++;
+    clickAudio.currentTime = 0;
+    clickAudio.play().catch(()=>{});
+    block.style.opacity = '0.3';
+  } else {
+    score--;
+    failAudio.currentTime = 0;
+    failAudio.play().catch(()=>{});
+    block.style.opacity = '0.3';
+  }
+  
+  scoreEl.textContent = score;
+  block.style.pointerEvents = 'none';
+  
+  setTimeout(() => {
+    block.remove();
+    blocks = blocks.filter(b => b !== block);
+  }, 200);
+}
+
+function startGame() {
+  overlay.classList.add('hidden');
+  score = 0;
+  timeLeft = 30;
+  scoreEl.textContent = '0';
+  timerEl.textContent = '30';
+  board.innerHTML = '';
+  blocks = [];
+  gameRunning = true;
+  
+  // 初始生成3行
+  for (let i = 0; i < 3; i++) {
+    const block = createBlock(Math.random() > 0.5);
+    block.style.top = (i * 80) + 'px';
+  }
+  
+  // 每0.5秒生成一个新块
+  spawnInterval = setInterval(() => {
+    if (gameRunning) createBlock(Math.random() > 0.5);
+  }, 500);
+  
+  // 每50毫秒移动一次
+  gameInterval = setInterval(() => {
+    if (gameRunning) moveBlocks();
+  }, 50);
+  
+  // 倒计时
+  const countdown = setInterval(() => {
+    timeLeft--;
+    timerEl.textContent = timeLeft;
+    if (timeLeft <= 0) {
+      clearInterval(countdown);
+      endGame();
+    }
+  }, 1000);
+}
+
+function endGame() {
+  gameRunning = false;
+  clearInterval(gameInterval);
+  clearInterval(spawnInterval);
+  
+  overlay.classList.remove('hidden');
+  overlay.querySelector('h1').textContent = '时间到！';
+  overlay.querySelector('p').textContent = '最终得分：' + score;
+  overlay.querySelector('button').textContent = '再来一次';
+}
+</script>
+</body>
+</html>
